@@ -1,5 +1,7 @@
-import { createContext, ReactNode, useReducer, Dispatch } from 'react';
+import { createContext, ReactNode, useReducer, Dispatch, useMemo } from 'react';
 import { ActivityState, activityReducer, initialState, ActivityActions } from '../reducers/activity-reducer';
+import { categories } from '../database/categories';
+import { Activity } from '../types';
 
 
 type ActivityProviderProps = {
@@ -9,6 +11,11 @@ type ActivityProviderProps = {
 type ActivityContextProps = {
     state: ActivityState
     dispatch: Dispatch<ActivityActions>
+    caloriesConsumed: number
+    caloriesBurned: number
+    netCalories: number
+    categoryName: (category: Activity['category']) => string[] 
+    isEmptyActivities: boolean
 
 }
 
@@ -18,10 +25,31 @@ export const ActivityContext = createContext<ActivityContextProps>(null!);
 export const ActivityProvider = ({ children }: ActivityProviderProps) => {
 
     const [state, dispatch] = useReducer(activityReducer, initialState);
+
+    //counters
+
+    const caloriesConsumed = useMemo(() => state.activities.reduce((total, activity) => activity.category === 1 ? total + activity.calories : total, 0), [state.activities]);
+
+    const caloriesBurned = useMemo(() => state.activities.reduce((total, activity) => activity.category === 2 ? total + activity.calories : total, 0), [state.activities]);
+
+    const netCalories = useMemo(() => caloriesConsumed - caloriesBurned, [state.activities]);
+
+
+    const categoryName = useMemo(() =>
+        (category: Activity['category']) => categories.map(cat => cat.id === category ? cat.name : '')
+        , [state.activities])
+
+    const isEmptyActivities = useMemo(() => state.activities.length === 0, [state.activities])
+
     return (
         <ActivityContext.Provider value={{
             state,
-            dispatch
+            dispatch,
+            caloriesConsumed,
+            caloriesBurned,
+            netCalories,
+            categoryName,
+            isEmptyActivities
         }}>
             {children}
         </ActivityContext.Provider>
